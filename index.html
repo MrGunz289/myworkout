@@ -226,6 +226,28 @@ h1,h2,h3,.label-font{font-family:'Oswald',sans-serif;letter-spacing:0.02em}
 .sync-dot.error{background:var(--red)}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+/* EXERCISE STATS */
+.ex-stat-section{margin-bottom:20px}
+.ex-stat-tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:14px}
+.ex-stat-tab{padding:7px 14px;border-radius:8px;border:1px solid var(--border);background:none;color:var(--text2);font-family:'Oswald',sans-serif;font-size:12px;font-weight:500;cursor:pointer;white-space:nowrap;transition:all .15s;flex-shrink:0}
+.ex-stat-tab.active{background:var(--accent);border-color:var(--accent);color:white}
+.ex-stat-card{background:var(--bg3);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:12px}
+.ex-stat-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px}
+.ex-stat-name{font-size:15px;font-weight:500;line-height:1.3;flex:1;margin-right:12px}
+.ex-stat-pr{text-align:right}
+.ex-stat-pr-val{font-family:'Oswald',sans-serif;font-size:22px;font-weight:700;color:var(--accent);line-height:1}
+.ex-stat-pr-label{font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+.ex-stat-chart{position:relative;height:80px;margin-bottom:10px}
+.chart-bars{display:flex;align-items:flex-end;gap:4px;height:100%}
+.chart-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;height:100%}
+.chart-bar{width:100%;border-radius:4px 4px 0 0;background:var(--accent);opacity:.7;min-height:4px;transition:height .3s}
+.chart-bar.latest{opacity:1;background:var(--accent)}
+.chart-date{font-size:9px;color:var(--text3);text-align:center;white-space:nowrap}
+.chart-val{font-size:9px;color:var(--text2);text-align:center;font-family:'Oswald',sans-serif}
+.ex-stat-row{display:flex;gap:10px}
+.ex-stat-mini{flex:1;background:var(--bg4);border-radius:8px;padding:8px;text-align:center}
+.ex-stat-mini-val{font-family:'Oswald',sans-serif;font-size:16px;font-weight:600;color:var(--text)}
+.ex-stat-mini-label{font-size:10px;color:var(--text3);margin-top:1px}
 /* DONE overlay sync indicator */
 .done-sync{display:flex;align-items:center;justify-content:center;gap:6px;font-size:12px;color:var(--text2);margin-bottom:16px;min-height:20px}
 .done-sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
@@ -286,6 +308,8 @@ input[type=number]::-webkit-outer-spin-button,input[type=number]::-webkit-inner-
     <div class="wstat"><div id="hs-streak" class="wstat-val yellow">0</div><div class="wstat-label">Streak ปัจจุบัน</div></div>
   </div>
   <div id="compare-section"></div>
+  <div class="section-title">สถิติแต่ละท่า</div>
+  <div id="ex-stat-section" class="ex-stat-section"></div>
   <div class="section-title">ประวัติการฝึก</div>
   <div id="sessions-list"></div>
 </div>
@@ -684,6 +708,7 @@ function renderHistory() {
   const vol = weekSessions.reduce((a,s)=>a+(s.volume||0),0);
   document.getElementById('hs-volume').textContent = vol > 999 ? (vol/1000).toFixed(1)+'k' : vol;
   document.getElementById('hs-streak').textContent = calcStreak();
+  renderExStats();
 
   // Compare last 2 sessions same day
   const compareSec = document.getElementById('compare-section');
@@ -724,6 +749,92 @@ function renderHistory() {
       </div>
     </div>`;
   }).join('');
+}
+
+// EXERCISE STATS
+let activeStatDay = 'mon';
+
+function renderExStats() {
+  const sec = document.getElementById('ex-stat-section');
+  if(!sec) return;
+
+  // Build tabs (only days that have strength exercises)
+  const dayKeys = ['mon','wed','fri'].filter(d => plans[d].some(e=>e.type==='strength'));
+  if(!dayKeys.includes(activeStatDay)) activeStatDay = dayKeys[0]||'mon';
+
+  const tabsHTML = dayKeys.map(d => `
+    <button class="ex-stat-tab ${d===activeStatDay?'active':''}" onclick="activeStatDay='${d}';renderExStats()">${DAYS[d].name}</button>
+  `).join('');
+
+  const exercises = plans[activeStatDay].filter(e=>e.type==='strength');
+  if(!exercises.length) { sec.innerHTML = '<div class="empty-state"><span class="empty-text">ไม่มีท่า Strength ในวันนี้</span></div>'; return; }
+
+  const cardsHTML = exercises.map(ex => buildExStatCard(ex, activeStatDay)).join('');
+  sec.innerHTML = `<div class="ex-stat-tabs">${tabsHTML}</div>${cardsHTML}`;
+}
+
+function buildExStatCard(ex, dayKey) {
+  // Collect all entries for this exercise across sessions
+  const entries = [];
+  sessions.forEach(s => {
+    if(s.day !== dayKey) return;
+    const found = s.exercises && s.exercises.find(e=>e.id===ex.id);
+    if(!found || found.type!=='strength') return;
+    const doneSets = found.sets_data.filter(s=>s.done && parseFloat(s.weight)>0);
+    if(!doneSets.length) return;
+    const maxW = Math.max(...doneSets.map(s=>parseFloat(s.weight)||0));
+    const avgW = doneSets.reduce((a,s)=>a+(parseFloat(s.weight)||0),0)/doneSets.length;
+    const totalReps = doneSets.reduce((a,s)=>a+(parseInt(s.reps)||0),0);
+    entries.push({ date: s.date, maxW, avgW: Math.round(avgW*10)/10, sets: doneSets.length, totalReps });
+  });
+  entries.sort((a,b)=>new Date(a.date)-new Date(b.date));
+
+  if(!entries.length) {
+    return `<div class="ex-stat-card">
+      <div class="ex-stat-name">${ex.name}</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px">ยังไม่มีข้อมูล — ทำครั้งแรกแล้วจะเห็นสถิติครับ</div>
+    </div>`;
+  }
+
+  const prEntry = entries.reduce((a,b)=>b.maxW>a.maxW?b:a);
+  const latest = entries[entries.length-1];
+  const recent = entries.slice(-8); // show last 8 sessions in chart
+  const maxBar = Math.max(...recent.map(e=>e.maxW));
+
+  const barsHTML = recent.map((e,i) => {
+    const h = maxBar>0 ? Math.round((e.maxW/maxBar)*100) : 0;
+    const isLatest = i===recent.length-1;
+    const d = new Date(e.date);
+    const label = `${d.getDate()}/${d.getMonth()+1}`;
+    return `<div class="chart-bar-wrap">
+      <div class="chart-val">${e.maxW}</div>
+      <div class="chart-bar ${isLatest?'latest':''}" style="height:${Math.max(h,5)}%"></div>
+      <div class="chart-date">${label}</div>
+    </div>`;
+  }).join('');
+
+  const trend = entries.length>=2 ? (() => {
+    const diff = latest.maxW - entries[entries.length-2].maxW;
+    if(diff>0) return `<span style="color:var(--green)">↑ +${diff} kg จากครั้งก่อน</span>`;
+    if(diff<0) return `<span style="color:var(--red)">↓ ${diff} kg จากครั้งก่อน</span>`;
+    return `<span style="color:var(--text3)">→ เท่าเดิม</span>`;
+  })() : '';
+
+  return `<div class="ex-stat-card">
+    <div class="ex-stat-header">
+      <div class="ex-stat-name">${ex.name}<br><span style="font-size:11px;color:var(--text3);font-weight:400">${trend}</span></div>
+      <div class="ex-stat-pr">
+        <div class="ex-stat-pr-val">${prEntry.maxW} kg</div>
+        <div class="ex-stat-pr-label">🏆 PR</div>
+      </div>
+    </div>
+    <div class="ex-stat-chart"><div class="chart-bars">${barsHTML}</div></div>
+    <div class="ex-stat-row">
+      <div class="ex-stat-mini"><div class="ex-stat-mini-val">${latest.maxW} kg</div><div class="ex-stat-mini-label">ล่าสุด</div></div>
+      <div class="ex-stat-mini"><div class="ex-stat-mini-val">${latest.avgW} kg</div><div class="ex-stat-mini-label">เฉลี่ย/เซ็ต</div></div>
+      <div class="ex-stat-mini"><div class="ex-stat-mini-val">${entries.length}</div><div class="ex-stat-mini-label">ครั้งที่ทำ</div></div>
+    </div>
+  </div>`;
 }
 
 // EDIT SCREEN
