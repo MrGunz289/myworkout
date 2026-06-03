@@ -3,114 +3,164 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#0f172a">
-<title>FitLog — บันทึกการออกกำลังกาย</title>
+<meta name="theme-color" content="#0b0f1a">
+<title>IronLog — Lift &amp; Burn</title>
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          brand: { 500: '#6366f1', 600: '#4f46e5', 700: '#4338ca' }
-        }
-      }
-    }
+    theme: { extend: { colors: {
+      brand: { 400:'#818cf8', 500:'#6366f1', 600:'#4f46e5', 700:'#4338ca' },
+      burn:  { 500:'#f97316', 600:'#ea580c' }
+    }, fontFamily: { sans: ['Inter','Segoe UI','system-ui','sans-serif'] } } }
   }
 </script>
 <style>
-  html, body { -webkit-tap-highlight-color: transparent; }
-  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+  html,body{ -webkit-tap-highlight-color:transparent; overscroll-behavior-y:none; }
+  body{ font-family:'Inter','Segoe UI',system-ui,sans-serif; }
   input[type=number]::-webkit-outer-spin-button,
-  input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-  input[type=number] { -moz-appearance: textfield; }
-  .no-scrollbar::-webkit-scrollbar { display: none; }
-  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-  @keyframes pop { 0%{transform:scale(.96);opacity:0} 100%{transform:scale(1);opacity:1} }
-  .pop { animation: pop .15s ease-out; }
-  @keyframes slideup { from{transform:translateY(100%)} to{transform:translateY(0)} }
-  .slideup { animation: slideup .22s ease-out; }
+  input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  input[type=number]{ -moz-appearance:textfield; }
+  .no-scrollbar::-webkit-scrollbar{ display:none; }
+  .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+  @keyframes pop{ 0%{transform:scale(.97);opacity:0} 100%{transform:scale(1);opacity:1} }
+  .pop{ animation:pop .15s ease-out; }
+  @keyframes slideup{ from{transform:translateY(100%)} to{transform:translateY(0)} }
+  .slideup{ animation:slideup .22s ease-out; }
+  @keyframes fadein{ from{opacity:0} to{opacity:1} }
+  .fadein{ animation:fadein .2s ease-out; }
+  .ring-prog{ transition:stroke-dashoffset .5s ease; }
 </style>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen pb-24 select-none">
+<body class="bg-slate-950 text-slate-100 min-h-screen pb-24 select-none antialiased">
 
-<!-- ===== App Shell ===== -->
 <div class="max-w-md mx-auto relative min-h-screen">
 
   <!-- Header -->
-  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between">
+  <header class="sticky top-0 z-30 bg-slate-950/90 backdrop-blur border-b border-slate-800/80 px-4 py-3 flex items-center justify-between">
     <div class="flex items-center gap-2">
-      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-indigo-700 grid place-items-center text-lg font-black">💪</div>
+      <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-brand-500 to-burn-600 grid place-items-center text-lg">🏋️</div>
       <div>
-        <h1 class="text-base font-bold leading-tight">FitLog</h1>
-        <p class="text-[11px] text-slate-400 leading-tight" id="headerSub">บันทึกการฝึก</p>
+        <h1 class="text-base font-extrabold leading-tight tracking-tight">IronLog</h1>
+        <p class="text-[11px] text-slate-400 leading-tight" id="headerSub">Lift &amp; Burn</p>
       </div>
     </div>
-    <button onclick="openSettings()" class="w-10 h-10 grid place-items-center rounded-xl bg-slate-800 active:bg-slate-700 text-xl">⚙️</button>
+    <button onclick="openSettings()" class="w-10 h-10 grid place-items-center rounded-xl bg-slate-800 active:bg-slate-700 text-lg">⚙️</button>
   </header>
 
-  <!-- ===== VIEW: Activities list ===== -->
-  <main id="viewActivities" class="p-4 space-y-3">
-    <div class="flex items-center justify-between">
-      <h2 class="text-lg font-bold">กิจกรรมของฉัน</h2>
-      <button onclick="addActivity()" class="text-sm font-semibold px-3 py-2 rounded-xl bg-brand-600 active:bg-brand-700">+ เพิ่ม</button>
-    </div>
-    <div id="activityList" class="space-y-3"></div>
-    <div id="activityEmpty" class="hidden text-center text-slate-500 py-16">
-      <div class="text-5xl mb-3">🏋️</div>
-      <p class="text-sm">ยังไม่มีกิจกรรม<br>กดปุ่ม “เพิ่ม” เพื่อเริ่มต้น</p>
-    </div>
-  </main>
-
-  <!-- ===== VIEW: Workout session ===== -->
-  <main id="viewWorkout" class="p-4 space-y-4 hidden">
-    <div class="flex items-center gap-3">
-      <button onclick="exitWorkout()" class="w-10 h-10 grid place-items-center rounded-xl bg-slate-800 active:bg-slate-700 text-xl">←</button>
-      <div class="flex-1 min-w-0">
-        <h2 id="woTitle" class="text-lg font-bold truncate">กิจกรรม</h2>
-        <p class="text-xs text-slate-400"><span id="woTimer">00:00</span> · <span id="woSetCount">0</span> เซ็ต</p>
-      </div>
-    </div>
-
-    <div id="exerciseList" class="space-y-4"></div>
-
-    <button onclick="addExercise()" class="w-full py-3 rounded-2xl border-2 border-dashed border-slate-700 text-slate-300 font-semibold active:bg-slate-900">
-      + เพิ่มท่าฝึก
-    </button>
-
-    <button onclick="finishWorkout()" id="finishBtn"
-      class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 font-bold text-lg active:scale-[.99] transition shadow-lg shadow-emerald-900/40">
-      ✓ เสร็จสิ้นการฝึก
-    </button>
-  </main>
+  <!-- ===== Tab views (rendered by app.js) ===== -->
+  <main id="tab-home"     class="tabview p-4 space-y-5"></main>
+  <main id="tab-routines" class="tabview p-4 space-y-5 hidden"></main>
+  <main id="tab-stats"    class="tabview p-4 space-y-5 hidden"></main>
+  <main id="tab-recovery" class="tabview p-4 space-y-5 hidden"></main>
 
 </div>
 
-<!-- ===== Settings Modal ===== -->
-<div id="settingsModal" class="fixed inset-0 z-50 hidden">
-  <div class="absolute inset-0 bg-black/60" onclick="closeSettings()"></div>
-  <div class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900 rounded-t-3xl p-5 slideup">
-    <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
-    <h3 class="text-lg font-bold mb-1">ตั้งค่าการเชื่อมต่อ</h3>
-    <p class="text-xs text-slate-400 mb-4">วาง Google Apps Script Web App URL เพื่อส่งข้อมูลเข้า Google Sheet</p>
-    <label class="text-xs font-semibold text-slate-300">Web App URL</label>
-    <textarea id="urlInput" rows="3" placeholder="https://script.google.com/macros/s/..../exec"
-      class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:border-brand-500 outline-none no-scrollbar"></textarea>
-    <div class="flex gap-2 mt-4">
-      <button onclick="closeSettings()" class="flex-1 py-3 rounded-xl bg-slate-800 active:bg-slate-700 font-semibold">ยกเลิก</button>
-      <button onclick="saveSettings()" class="flex-1 py-3 rounded-xl bg-brand-600 active:bg-brand-700 font-semibold">บันทึก</button>
+<!-- ===== Bottom Nav ===== -->
+<nav class="fixed bottom-0 left-0 right-0 z-40 max-w-md mx-auto bg-slate-900/95 backdrop-blur border-t border-slate-800">
+  <div class="grid grid-cols-4">
+    <button data-tab="home"     onclick="switchTab('home')"     class="navbtn flex flex-col items-center gap-0.5 py-2.5 text-brand-400">
+      <span class="text-xl">🏠</span><span class="text-[10px] font-semibold">หน้าหลัก</span></button>
+    <button data-tab="routines" onclick="switchTab('routines')" class="navbtn flex flex-col items-center gap-0.5 py-2.5 text-slate-500">
+      <span class="text-xl">📋</span><span class="text-[10px] font-semibold">โปรแกรม</span></button>
+    <button data-tab="stats"    onclick="switchTab('stats')"    class="navbtn flex flex-col items-center gap-0.5 py-2.5 text-slate-500">
+      <span class="text-xl">📈</span><span class="text-[10px] font-semibold">สถิติ</span></button>
+    <button data-tab="recovery" onclick="switchTab('recovery')" class="navbtn flex flex-col items-center gap-0.5 py-2.5 text-slate-500">
+      <span class="text-xl">🛌</span><span class="text-[10px] font-semibold">ฟื้นฟู</span></button>
+  </div>
+</nav>
+
+<!-- ===== Workout Tracker (full-screen overlay) ===== -->
+<div id="trackerView" class="fixed inset-0 z-50 hidden bg-slate-950 overflow-y-auto no-scrollbar">
+  <div class="max-w-md mx-auto min-h-screen pb-40">
+    <header class="sticky top-0 z-10 bg-slate-950/95 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center gap-3">
+      <button onclick="confirmExitTracker()" class="w-10 h-10 grid place-items-center rounded-xl bg-slate-800 active:bg-slate-700 text-xl">✕</button>
+      <div class="flex-1 min-w-0">
+        <h2 id="trkTitle" class="text-base font-bold truncate">Workout</h2>
+        <p class="text-xs text-slate-400"><span id="trkTimer">00:00</span> · <span id="trkSets">0</span> เซ็ต · <span id="trkVol">0</span> kg vol</p>
+      </div>
+      <button onclick="openPlateCalc()" class="w-10 h-10 grid place-items-center rounded-xl bg-slate-800 active:bg-slate-700" title="Plate Calculator">🟢</button>
+    </header>
+    <div id="trkExercises" class="p-4 space-y-4"></div>
+    <div class="px-4 space-y-3">
+      <button onclick="addExerciseToSession()" class="w-full py-3 rounded-2xl border-2 border-dashed border-slate-700 text-slate-300 font-semibold active:bg-slate-900">+ เพิ่มท่าฝึก</button>
+      <button onclick="finishWorkout()" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 to-green-600 font-bold text-lg active:scale-[.99] transition shadow-lg shadow-emerald-900/40">✓ เสร็จสิ้น &amp; บันทึก</button>
     </div>
-    <p class="text-[11px] text-slate-500 mt-3 text-center">URL จะถูกเก็บในเครื่องนี้ (localStorage) กรอกครั้งเดียวพอ</p>
   </div>
 </div>
 
-<!-- ===== Generic Prompt Modal ===== -->
-<div id="promptModal" class="fixed inset-0 z-50 hidden">
+<!-- ===== Rest Timer (bottom sheet, persistent during workout) ===== -->
+<div id="restBar" class="fixed bottom-0 left-0 right-0 z-[55] max-w-md mx-auto hidden px-4 pb-4">
+  <div class="bg-gradient-to-r from-brand-600 to-brand-700 rounded-2xl p-4 shadow-2xl flex items-center gap-4 slideup">
+    <div class="relative w-14 h-14 shrink-0">
+      <svg viewBox="0 0 56 56" class="w-14 h-14 -rotate-90">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="5"/>
+        <circle id="restRing" cx="28" cy="28" r="24" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"
+          stroke-dasharray="150.8" stroke-dashoffset="0" class="ring-prog"/>
+      </svg>
+      <span id="restCount" class="absolute inset-0 grid place-items-center text-sm font-bold">60</span>
+    </div>
+    <div class="flex-1">
+      <p class="text-xs text-indigo-200 font-semibold">พักระหว่างเซ็ต</p>
+      <div class="flex gap-1.5 mt-1">
+        <button onclick="addRest(15)" class="px-2.5 py-1 rounded-lg bg-white/20 text-xs font-bold active:bg-white/30">+15s</button>
+        <button onclick="setRest(60)" class="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-bold active:bg-white/30">60</button>
+        <button onclick="setRest(90)" class="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-bold active:bg-white/30">90</button>
+        <button onclick="setRest(120)" class="px-2.5 py-1 rounded-lg bg-white/15 text-xs font-bold active:bg-white/30">120</button>
+      </div>
+    </div>
+    <button onclick="stopRest()" class="w-10 h-10 grid place-items-center rounded-xl bg-white/20 active:bg-white/30 text-lg shrink-0">⏭</button>
+  </div>
+</div>
+
+<!-- ===== Generic Bottom-Sheet Modals ===== -->
+<!-- Settings -->
+<div id="settingsModal" class="modal fixed inset-0 z-[60] hidden">
+  <div class="absolute inset-0 bg-black/60" onclick="closeModal('settingsModal')"></div>
+  <div class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900 rounded-t-3xl p-5 slideup max-h-[88vh] overflow-y-auto no-scrollbar">
+    <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
+    <h3 class="text-lg font-bold mb-1">ตั้งค่า</h3>
+    <p class="text-xs text-slate-400 mb-4">Google Apps Script Web App URL (เก็บในเครื่อง กรอกครั้งเดียว)</p>
+    <label class="text-xs font-semibold text-slate-300">Web App URL</label>
+    <textarea id="urlInput" rows="3" placeholder="https://script.google.com/macros/s/..../exec"
+      class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-sm focus:border-brand-500 outline-none no-scrollbar"></textarea>
+
+    <h4 class="text-sm font-bold mt-5 mb-2">เป้าหมายต่อสัปดาห์</h4>
+    <div class="grid grid-cols-2 gap-2">
+      <div><label class="text-[11px] text-slate-400">Steady Cardio (นาที)</label>
+        <input id="setSteady" type="number" class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-base focus:border-brand-500 outline-none"></div>
+      <div><label class="text-[11px] text-slate-400">HIIT (เซสชัน)</label>
+        <input id="setHiit" type="number" class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-base focus:border-brand-500 outline-none"></div>
+      <div><label class="text-[11px] text-slate-400">เซ็ต/กล้ามเนื้อ (เป้า)</label>
+        <input id="setVolTarget" type="number" class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-base focus:border-brand-500 outline-none"></div>
+      <div><label class="text-[11px] text-slate-400">น้ำหนักบาร์ (kg)</label>
+        <input id="setBar" type="number" class="mt-1 w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-2 text-base focus:border-brand-500 outline-none"></div>
+    </div>
+
+    <div class="flex gap-2 mt-5">
+      <button onclick="closeModal('settingsModal')" class="flex-1 py-3 rounded-xl bg-slate-800 active:bg-slate-700 font-semibold">ปิด</button>
+      <button onclick="saveSettings()" class="flex-1 py-3 rounded-xl bg-brand-600 active:bg-brand-700 font-semibold">บันทึก</button>
+    </div>
+    <button onclick="resetAllData()" class="w-full mt-3 py-2 text-xs text-red-400/80">ล้างข้อมูลทั้งหมด</button>
+  </div>
+</div>
+
+<!-- Generic content sheet (filled by JS) -->
+<div id="sheetModal" class="modal fixed inset-0 z-[60] hidden">
+  <div class="absolute inset-0 bg-black/60" onclick="closeModal('sheetModal')"></div>
+  <div class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900 rounded-t-3xl p-5 slideup max-h-[88vh] overflow-y-auto no-scrollbar">
+    <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
+    <div id="sheetBody"></div>
+  </div>
+</div>
+
+<!-- Prompt -->
+<div id="promptModal" class="modal fixed inset-0 z-[61] hidden">
   <div class="absolute inset-0 bg-black/60" onclick="closePrompt(false)"></div>
   <div class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900 rounded-t-3xl p-5 slideup">
     <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
     <h3 id="promptTitle" class="text-lg font-bold mb-3">ชื่อ</h3>
-    <input id="promptInput" type="text" autocomplete="off"
-      class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-3 text-base focus:border-brand-500 outline-none">
+    <input id="promptInput" type="text" autocomplete="off" class="w-full rounded-xl bg-slate-800 border border-slate-700 px-3 py-3 text-base focus:border-brand-500 outline-none">
     <div class="flex gap-2 mt-4">
       <button onclick="closePrompt(false)" class="flex-1 py-3 rounded-xl bg-slate-800 active:bg-slate-700 font-semibold">ยกเลิก</button>
       <button onclick="closePrompt(true)" class="flex-1 py-3 rounded-xl bg-brand-600 active:bg-brand-700 font-semibold">ตกลง</button>
@@ -118,431 +168,32 @@
   </div>
 </div>
 
-<!-- ===== Confirm Modal ===== -->
-<div id="confirmModal" class="fixed inset-0 z-50 hidden">
+<!-- Confirm -->
+<div id="confirmModal" class="modal fixed inset-0 z-[61] hidden">
   <div class="absolute inset-0 bg-black/60" onclick="closeConfirm(false)"></div>
   <div class="absolute bottom-0 left-0 right-0 max-w-md mx-auto bg-slate-900 rounded-t-3xl p-5 slideup">
     <div class="w-12 h-1.5 bg-slate-700 rounded-full mx-auto mb-4"></div>
     <h3 id="confirmText" class="text-base font-semibold mb-4">ยืนยัน?</h3>
     <div class="flex gap-2">
       <button onclick="closeConfirm(false)" class="flex-1 py-3 rounded-xl bg-slate-800 active:bg-slate-700 font-semibold">ยกเลิก</button>
-      <button onclick="closeConfirm(true)" class="flex-1 py-3 rounded-xl bg-red-600 active:bg-red-700 font-semibold">ลบ</button>
+      <button id="confirmOkBtn" onclick="closeConfirm(true)" class="flex-1 py-3 rounded-xl bg-red-600 active:bg-red-700 font-semibold">ยืนยัน</button>
     </div>
   </div>
 </div>
 
-<!-- ===== Loading Overlay ===== -->
-<div id="loadingOverlay" class="fixed inset-0 z-[60] hidden bg-black/70 grid place-items-center">
+<!-- Loading -->
+<div id="loadingOverlay" class="fixed inset-0 z-[70] hidden bg-black/70 grid place-items-center">
   <div class="bg-slate-900 rounded-2xl px-8 py-6 text-center">
     <div class="w-10 h-10 border-4 border-slate-700 border-t-brand-500 rounded-full animate-spin mx-auto"></div>
-    <p class="mt-3 text-sm text-slate-300">กำลังส่งข้อมูล...</p>
+    <p class="mt-3 text-sm text-slate-300" id="loadingText">กำลังส่งข้อมูล...</p>
   </div>
 </div>
 
-<!-- ===== Toast ===== -->
-<div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-[70] hidden">
-  <div id="toastInner" class="px-5 py-3 rounded-xl text-sm font-semibold shadow-lg pop"></div>
+<!-- Toast -->
+<div id="toast" class="fixed bottom-24 left-1/2 -translate-x-1/2 z-[80] hidden px-4 w-full max-w-md">
+  <div id="toastInner" class="px-5 py-3 rounded-xl text-sm font-semibold shadow-lg pop text-center"></div>
 </div>
 
-<script>
-// ============================================================
-//  STORAGE HELPERS
-// ============================================================
-const LS = {
-  url: 'fitlog_url',
-  activities: 'fitlog_activities',   // [{id,name,exercises:[{id,name}]}]
-  history: 'fitlog_history'          // { exerciseName: [{date,sets:[{w,r}],max}] }
-};
-const load = (k, def) => { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch { return def; } };
-const save = (k, v) => localStorage.setItem(k, JSON.stringify(v));
-const uid  = () => Date.now().toString(36) + Math.random().toString(36).slice(2,6);
-
-let activities = load(LS.activities, []);
-let history    = load(LS.history, {});
-
-// ============================================================
-//  TOAST + MODAL UTILITIES
-// ============================================================
-function toast(msg, ok = true) {
-  const t = document.getElementById('toast');
-  const i = document.getElementById('toastInner');
-  i.textContent = msg;
-  i.className = 'px-5 py-3 rounded-xl text-sm font-semibold shadow-lg pop ' +
-    (ok ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white');
-  t.classList.remove('hidden');
-  clearTimeout(t._t);
-  t._t = setTimeout(() => t.classList.add('hidden'), 2600);
-}
-
-// Promise-based text prompt
-let _promptResolve = null;
-function askText(title, initial = '') {
-  return new Promise(res => {
-    _promptResolve = res;
-    document.getElementById('promptTitle').textContent = title;
-    const inp = document.getElementById('promptInput');
-    inp.value = initial;
-    document.getElementById('promptModal').classList.remove('hidden');
-    setTimeout(() => { inp.focus(); inp.select(); }, 50);
-  });
-}
-function closePrompt(ok) {
-  const val = document.getElementById('promptInput').value.trim();
-  document.getElementById('promptModal').classList.add('hidden');
-  if (_promptResolve) { _promptResolve(ok ? val : null); _promptResolve = null; }
-}
-document.getElementById('promptInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') closePrompt(true);
-});
-
-// Promise-based confirm
-let _confirmResolve = null;
-function askConfirm(text) {
-  return new Promise(res => {
-    _confirmResolve = res;
-    document.getElementById('confirmText').textContent = text;
-    document.getElementById('confirmModal').classList.remove('hidden');
-  });
-}
-function closeConfirm(ok) {
-  document.getElementById('confirmModal').classList.add('hidden');
-  if (_confirmResolve) { _confirmResolve(ok); _confirmResolve = null; }
-}
-
-// ============================================================
-//  SETTINGS
-// ============================================================
-function openSettings() {
-  document.getElementById('urlInput').value = localStorage.getItem(LS.url) || '';
-  document.getElementById('settingsModal').classList.remove('hidden');
-}
-function closeSettings() { document.getElementById('settingsModal').classList.add('hidden'); }
-function saveSettings() {
-  const url = document.getElementById('urlInput').value.trim();
-  localStorage.setItem(LS.url, url);
-  closeSettings();
-  toast('บันทึก URL แล้ว');
-  updateHeaderSub();
-}
-function updateHeaderSub() {
-  const url = localStorage.getItem(LS.url);
-  document.getElementById('headerSub').textContent = url ? 'เชื่อมต่อ Sheet แล้ว ✓' : 'ยังไม่ได้ตั้งค่า URL';
-}
-
-// ============================================================
-//  ACTIVITIES (กิจกรรมหลัก)
-// ============================================================
-function persistActivities() { save(LS.activities, activities); }
-
-async function addActivity() {
-  const name = await askText('ชื่อกิจกรรมใหม่', '');
-  if (!name) return;
-  activities.push({ id: uid(), name, exercises: [] });
-  persistActivities();
-  renderActivities();
-}
-async function editActivity(id, e) {
-  e.stopPropagation();
-  const a = activities.find(x => x.id === id);
-  const name = await askText('แก้ไขชื่อกิจกรรม', a.name);
-  if (!name) return;
-  a.name = name; persistActivities(); renderActivities();
-}
-async function deleteActivity(id, e) {
-  e.stopPropagation();
-  const a = activities.find(x => x.id === id);
-  if (!(await askConfirm(`ลบกิจกรรม “${a.name}” ?`))) return;
-  activities = activities.filter(x => x.id !== id);
-  persistActivities(); renderActivities();
-}
-
-function renderActivities() {
-  const list = document.getElementById('activityList');
-  document.getElementById('activityEmpty').classList.toggle('hidden', activities.length > 0);
-  list.innerHTML = activities.map(a => `
-    <div onclick="startWorkout('${a.id}')"
-      class="pop bg-slate-900 rounded-2xl p-4 active:bg-slate-800 border border-slate-800 cursor-pointer">
-      <div class="flex items-center justify-between">
-        <div class="min-w-0">
-          <h3 class="font-bold text-base truncate">${esc(a.name)}</h3>
-          <p class="text-xs text-slate-400 mt-0.5">${a.exercises.length} ท่าฝึก</p>
-        </div>
-        <div class="flex gap-1 shrink-0">
-          <button onclick="editActivity('${a.id}',event)" class="w-9 h-9 grid place-items-center rounded-lg bg-slate-800 active:bg-slate-700">✏️</button>
-          <button onclick="deleteActivity('${a.id}',event)" class="w-9 h-9 grid place-items-center rounded-lg bg-slate-800 active:bg-slate-700">🗑️</button>
-        </div>
-      </div>
-    </div>`).join('');
-}
-
-// ============================================================
-//  WORKOUT SESSION
-// ============================================================
-let session = null;   // { activityId, name, startedAt, exercises:[{id,name,sets:[{w,r}]}] }
-let timerInt = null;
-
-function startWorkout(activityId) {
-  const a = activities.find(x => x.id === activityId);
-  if (!a) return;
-  // Build a live session, seeding one empty set per exercise
-  session = {
-    activityId: a.id,
-    name: a.name,
-    startedAt: Date.now(),
-    exercises: a.exercises.map(ex => ({ id: ex.id, name: ex.name, sets: [{ w: '', r: '' }] }))
-  };
-  document.getElementById('woTitle').textContent = a.name;
-  document.getElementById('viewActivities').classList.add('hidden');
-  document.getElementById('viewWorkout').classList.remove('hidden');
-  window.scrollTo(0, 0);
-  startTimer();
-  renderExercises();
-}
-
-function exitWorkout() {
-  stopTimer();
-  session = null;
-  document.getElementById('viewWorkout').classList.add('hidden');
-  document.getElementById('viewActivities').classList.remove('hidden');
-  renderActivities();
-}
-
-function startTimer() {
-  stopTimer();
-  timerInt = setInterval(() => {
-    const s = Math.floor((Date.now() - session.startedAt) / 1000);
-    const mm = String(Math.floor(s / 60)).padStart(2, '0');
-    const ss = String(s % 60).padStart(2, '0');
-    document.getElementById('woTimer').textContent = `${mm}:${ss}`;
-  }, 1000);
-}
-function stopTimer() { if (timerInt) clearInterval(timerInt); timerInt = null; }
-
-// ---- Exercise CRUD within session (also persists to the activity template) ----
-async function addExercise() {
-  const name = await askText('ชื่อท่าฝึกใหม่', '');
-  if (!name) return;
-  const id = uid();
-  session.exercises.push({ id, name, sets: [{ w: '', r: '' }] });
-  // persist to activity template
-  const a = activities.find(x => x.id === session.activityId);
-  if (a) { a.exercises.push({ id, name }); persistActivities(); }
-  renderExercises();
-}
-async function editExercise(exId) {
-  const ex = session.exercises.find(x => x.id === exId);
-  const name = await askText('แก้ไขชื่อท่าฝึก', ex.name);
-  if (!name) return;
-  ex.name = name;
-  const a = activities.find(x => x.id === session.activityId);
-  const te = a?.exercises.find(x => x.id === exId);
-  if (te) { te.name = name; persistActivities(); }
-  renderExercises();
-}
-async function deleteExercise(exId) {
-  const ex = session.exercises.find(x => x.id === exId);
-  if (!(await askConfirm(`ลบท่า “${ex.name}” ออกจากเซสชันนี้?`))) return;
-  session.exercises = session.exercises.filter(x => x.id !== exId);
-  const a = activities.find(x => x.id === session.activityId);
-  if (a) { a.exercises = a.exercises.filter(x => x.id !== exId); persistActivities(); }
-  renderExercises();
-}
-
-// ---- Sets ----
-function addSet(exId) {
-  const ex = session.exercises.find(x => x.id === exId);
-  const last = ex.sets[ex.sets.length - 1] || { w: '', r: '' };
-  ex.sets.push({ w: last.w, r: last.r }); // pre-fill with previous set values
-  renderExercises();
-}
-function removeSet(exId, idx) {
-  const ex = session.exercises.find(x => x.id === exId);
-  ex.sets.splice(idx, 1);
-  if (ex.sets.length === 0) ex.sets.push({ w: '', r: '' });
-  renderExercises();
-}
-function updateSet(exId, idx, field, val) {
-  const ex = session.exercises.find(x => x.id === exId);
-  ex.sets[idx][field] = val;
-  updateSetCount();
-}
-function updateSetCount() {
-  const n = session.exercises.reduce((s, ex) =>
-    s + ex.sets.filter(st => st.w !== '' && st.r !== '').length, 0);
-  document.getElementById('woSetCount').textContent = n;
-}
-
-// ---- History / PR hint ----
-function hintFor(exName) {
-  const recs = history[exName];
-  if (!recs || !recs.length) return '';
-  const last = recs[recs.length - 1];
-  const lastSet = last.sets[last.sets.length - 1];
-  const pr = Math.max(...recs.map(r => r.max || 0));
-  let parts = [];
-  if (lastSet) parts.push(`ครั้งล่าสุด: ${lastSet.w}kg × ${lastSet.r}`);
-  if (pr > 0) parts.push(`สถิติสูงสุด: ${pr}kg`);
-  return parts.join(' · ');
-}
-
-function renderExercises() {
-  const wrap = document.getElementById('exerciseList');
-  if (!session.exercises.length) {
-    wrap.innerHTML = `<div class="text-center text-slate-500 py-10 text-sm">ยังไม่มีท่าฝึก<br>กดปุ่มด้านล่างเพื่อเพิ่ม</div>`;
-  } else {
-    wrap.innerHTML = session.exercises.map(ex => {
-      const hint = hintFor(ex.name);
-      const setsHtml = ex.sets.map((st, i) => `
-        <div class="flex items-center gap-2">
-          <div class="w-7 h-9 grid place-items-center rounded-lg bg-slate-800 text-xs text-slate-400 font-bold shrink-0">${i + 1}</div>
-          <div class="flex-1 relative">
-            <input type="number" inputmode="decimal" value="${st.w}" placeholder="0"
-              oninput="updateSet('${ex.id}',${i},'w',this.value)"
-              class="w-full text-center rounded-lg bg-slate-800 border border-slate-700 py-2.5 pr-9 text-base focus:border-brand-500 outline-none">
-            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">kg</span>
-          </div>
-          <span class="text-slate-600">×</span>
-          <div class="flex-1 relative">
-            <input type="number" inputmode="numeric" value="${st.r}" placeholder="0"
-              oninput="updateSet('${ex.id}',${i},'r',this.value)"
-              class="w-full text-center rounded-lg bg-slate-800 border border-slate-700 py-2.5 pr-12 text-base focus:border-brand-500 outline-none">
-            <span class="absolute right-2 top-1/2 -translate-y-1/2 text-[11px] text-slate-500">ครั้ง</span>
-          </div>
-          <button onclick="removeSet('${ex.id}',${i})" class="w-9 h-9 grid place-items-center rounded-lg bg-slate-800 active:bg-red-900/60 text-red-400 shrink-0">−</button>
-        </div>`).join('');
-      return `
-      <div class="pop bg-slate-900 rounded-2xl p-4 border border-slate-800">
-        <div class="flex items-start justify-between gap-2 mb-3">
-          <div class="min-w-0">
-            <h3 class="font-bold text-base truncate">${esc(ex.name)}</h3>
-            ${hint ? `<p class="text-[11px] text-amber-400/90 mt-0.5">📈 ${esc(hint)}</p>` : `<p class="text-[11px] text-slate-500 mt-0.5">ยังไม่มีประวัติ</p>`}
-          </div>
-          <div class="flex gap-1 shrink-0">
-            <button onclick="editExercise('${ex.id}')" class="w-8 h-8 grid place-items-center rounded-lg bg-slate-800 active:bg-slate-700 text-sm">✏️</button>
-            <button onclick="deleteExercise('${ex.id}')" class="w-8 h-8 grid place-items-center rounded-lg bg-slate-800 active:bg-slate-700 text-sm">🗑️</button>
-          </div>
-        </div>
-        <div class="space-y-2">${setsHtml}</div>
-        <button onclick="addSet('${ex.id}')" class="mt-3 w-full py-2.5 rounded-lg bg-brand-600/20 text-brand-500 font-semibold text-sm active:bg-brand-600/30">+ เพิ่มเซ็ต</button>
-      </div>`;
-    }).join('');
-  }
-  updateSetCount();
-}
-
-// ============================================================
-//  FINISH + SYNC
-// ============================================================
-function saveHistory() {
-  const dateISO = new Date().toISOString().slice(0, 10);
-  session.exercises.forEach(ex => {
-    const valid = ex.sets.filter(s => s.w !== '' && s.r !== '')
-                         .map(s => ({ w: Number(s.w), r: Number(s.r) }));
-    if (!valid.length) return;
-    const max = Math.max(...valid.map(s => s.w));
-    if (!history[ex.name]) history[ex.name] = [];
-    history[ex.name].push({ date: dateISO, sets: valid, max });
-    if (history[ex.name].length > 50) history[ex.name].shift();
-  });
-  save(LS.history, history);
-}
-
-function buildPayload() {
-  const now = new Date();
-  const dateStr = now.toISOString().slice(0, 10);
-  const durationSec = Math.floor((Date.now() - session.startedAt) / 1000);
-  const durationStr = `${String(Math.floor(durationSec/60)).padStart(2,'0')}:${String(durationSec%60).padStart(2,'0')}`;
-
-  const setsDetail = [];
-  session.exercises.forEach(ex => {
-    let n = 0;
-    ex.sets.forEach(st => {
-      if (st.w === '' || st.r === '') return;
-      n++;
-      setsDetail.push({
-        date: dateStr,
-        activity: session.name,
-        exercise: ex.name,
-        setNo: n,
-        weight: Number(st.w),
-        reps: Number(st.r)
-      });
-    });
-  });
-
-  return {
-    session: {
-      date: dateStr,
-      activity: session.name,
-      duration: durationStr,
-      totalSets: setsDetail.length
-    },
-    sets: setsDetail
-  };
-}
-
-async function finishWorkout() {
-  const payload = buildPayload();
-  if (payload.sets.length === 0) {
-    toast('กรอกน้ำหนัก/ครั้งอย่างน้อย 1 เซ็ต', false);
-    return;
-  }
-
-  // Always save history + finish locally first
-  saveHistory();
-
-  const url = localStorage.getItem(LS.url);
-  if (!url) {
-    toast('บันทึกในเครื่องแล้ว (ยังไม่ตั้งค่า URL)', true);
-    exitWorkout();
-    return;
-  }
-
-  document.getElementById('loadingOverlay').classList.remove('hidden');
-  try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors',                       // Apps Script ไม่ส่ง CORS header
-      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // เลี่ยง preflight
-      body: JSON.stringify(payload)
-    });
-    // ด้วย no-cors เราอ่าน response ไม่ได้ — ถือว่าสำเร็จถ้าไม่มี network error
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    toast('ส่งข้อมูลเข้า Google Sheet สำเร็จ ✓', true);
-    exitWorkout();
-  } catch (err) {
-    document.getElementById('loadingOverlay').classList.add('hidden');
-    toast('ส่งข้อมูลล้มเหลว — บันทึกในเครื่องแล้ว', false);
-    console.error(err);
-  }
-}
-
-// ============================================================
-//  UTIL + INIT
-// ============================================================
-function esc(s) {
-  return String(s).replace(/[&<>"']/g, c =>
-    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-(function init() {
-  updateHeaderSub();
-  renderActivities();
-  // Seed example activities on very first run
-  if (activities.length === 0 && !localStorage.getItem('fitlog_seeded')) {
-    localStorage.setItem('fitlog_seeded', '1');
-    activities = [
-      { id: uid(), name: 'Chest Day', exercises: [
-        { id: uid(), name: 'Bench Press' }, { id: uid(), name: 'Incline Dumbbell Press' }
-      ]},
-      { id: uid(), name: 'Leg Day', exercises: [
-        { id: uid(), name: 'Squat' }, { id: uid(), name: 'Leg Press' }
-      ]}
-    ];
-    persistActivities();
-    renderActivities();
-  }
-})();
-</script>
+<script src="app.js"></script>
 </body>
 </html>
