@@ -752,7 +752,7 @@ function renderHistory() {
 }
 
 // EXERCISE STATS
-let activeStatDay = 'mon';
+let activeStatDay = null;
 
 function renderExStats() {
   const sec = document.getElementById('ex-stat-section');
@@ -760,7 +760,19 @@ function renderExStats() {
 
   // Build tabs (only days that have strength exercises)
   const dayKeys = ['mon','wed','fri'].filter(d => plans[d].some(e=>e.type==='strength'));
-  if(!dayKeys.includes(activeStatDay)) activeStatDay = dayKeys[0]||'mon';
+
+  // Default to: today's day > day of most recent session > first tab
+  if(!activeStatDay || !dayKeys.includes(activeStatDay)) {
+    const todayKey = getTodayKey();
+    if(todayKey && dayKeys.includes(todayKey)) {
+      activeStatDay = todayKey;
+    } else if(sessions.length) {
+      const lastDay = [...sessions].sort((a,b)=>new Date(b.date)-new Date(a.date))[0].day;
+      activeStatDay = dayKeys.includes(lastDay) ? lastDay : dayKeys[0]||'mon';
+    } else {
+      activeStatDay = dayKeys[0]||'mon';
+    }
+  }
 
   const tabsHTML = dayKeys.map(d => `
     <button class="ex-stat-tab ${d===activeStatDay?'active':''}" onclick="activeStatDay='${d}';renderExStats()">${DAYS[d].name}</button>
@@ -780,7 +792,7 @@ function buildExStatCard(ex, dayKey) {
     if(s.day !== dayKey) return;
     const found = s.exercises && s.exercises.find(e=>e.id===ex.id);
     if(!found || found.type!=='strength') return;
-    const doneSets = found.sets_data.filter(s=>s.done && parseFloat(s.weight)>0);
+    const doneSets = found.sets_data.filter(s=>s.done);
     if(!doneSets.length) return;
     const maxW = Math.max(...doneSets.map(s=>parseFloat(s.weight)||0));
     const avgW = doneSets.reduce((a,s)=>a+(parseFloat(s.weight)||0),0)/doneSets.length;
