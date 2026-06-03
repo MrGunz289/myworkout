@@ -514,12 +514,8 @@ function renderHome() {
 
 // WORKOUT SCREEN
 function startWorkout(dayKey) {
-  switchScreen('workout', document.getElementById('nav-workout'));
   const day = DAYS[dayKey];
-  document.getElementById('wk-title').textContent = day.focus;
   const now = new Date();
-  document.getElementById('wk-date').textContent = formatDate(now.toISOString()) + ' — ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
-
   currentSession = {
     date: new Date().toISOString(),
     day: dayKey,
@@ -531,6 +527,9 @@ function startWorkout(dayKey) {
       expanded: true
     }))
   };
+  switchScreen('workout', document.getElementById('nav-workout'));
+  document.getElementById('wk-title').textContent = day.focus;
+  document.getElementById('wk-date').textContent = formatDate(now.toISOString()) + ' — ' + now.getHours().toString().padStart(2,'0') + ':' + now.getMinutes().toString().padStart(2,'0');
   renderExercises();
 }
 
