@@ -549,8 +549,8 @@ function renderExCard(e, i) {
     const rows = e.sets_data.map((s,si) => `
       <div class="set-row">
         <div class="set-num">${si+1}</div>
-        <input class="set-input" type="number" inputmode="decimal" placeholder="kg" value="${s.weight}" onchange="updateSet(${i},${si},'weight',this.value)" step="0.5">
-        <input class="set-input" type="number" inputmode="numeric" placeholder="ครั้ง" value="${s.reps}" onchange="updateSet(${i},${si},'reps',this.value)">
+        <input class="set-input" type="number" inputmode="decimal" placeholder="kg" value="${s.weight}" oninput="updateSet(${i},${si},'weight',this.value)" step="0.5">
+        <input class="set-input" type="number" inputmode="numeric" placeholder="ครั้ง" value="${s.reps}" oninput="updateSet(${i},${si},'reps',this.value)">
         <div class="set-check ${s.done?'checked':''}" onclick="toggleSet(${i},${si})">
           <svg viewBox="0 0 24 24" fill="none"><polyline points="20 6 9 17 4 12"/></svg>
         </div>
@@ -577,11 +577,11 @@ function renderExCard(e, i) {
         <div class="cardio-note">เป้าหมาย: ${e.duration} นาที</div>
         <div class="cardio-row">
           <div class="cardio-label">เวลาจริงที่ทำได้ (นาที)</div>
-          <input class="cardio-input" type="number" inputmode="numeric" placeholder="${e.duration}" value="${e.cardio_data.actual_min}" onchange="updateCardio(${i},'actual_min',this.value)">
+          <input class="cardio-input" type="number" inputmode="numeric" placeholder="${e.duration}" value="${e.cardio_data.actual_min}" oninput="updateCardio(${i},'actual_min',this.value)">
         </div>
         <div class="cardio-row">
           <div class="cardio-label">หมายเหตุ / ความเร็ว</div>
-          <input class="cardio-input" type="text" placeholder="เช่น L3" value="${e.cardio_data.note}" onchange="updateCardio(${i},'note',this.value)" style="width:120px;text-align:left">
+          <input class="cardio-input" type="text" placeholder="เช่น L3" value="${e.cardio_data.note}" oninput="updateCardio(${i},'note',this.value)" style="width:120px;text-align:left">
         </div>
       </div>`;
   }
@@ -648,7 +648,7 @@ function finishWorkout() {
 
   const sessionData = {
     ...currentSession,
-    date: new Date().toLocaleDateString('th-TH'),
+    date: new Date().toISOString(),
     focus: DAYS[currentSession.day].focus,
     totalSets,
     volume: Math.round(volume)
